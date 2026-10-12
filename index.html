@@ -1,95 +1,472 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sharing Awesome FF Shop</title>
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VISION</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
 <style>
-body{
-margin:0;
-font-family:Arial,sans-serif;
-background:#0d0d0d;
-color:white;
-text-align:center;
-}
-
-header{
-background:linear-gradient(90deg,#ff6600,#ff0000);
-padding:20px;
-font-size:30px;
-font-weight:bold;
-}
-
-.hero{
-padding:40px 20px;
-}
-
-.hero h1{
-font-size:35px;
-color:#ffcc00;
-}
-
-.card{
-background:#1a1a1a;
-margin:20px;
-padding:20px;
-border-radius:15px;
-box-shadow:0 0 15px orange;
-}
-
-.btn{
-display:inline-block;
-padding:15px 30px;
-background:#ff6600;
-color:white;
-text-decoration:none;
-border-radius:10px;
-font-size:18px;
-margin-top:15px;
-}
-
-footer{
-padding:20px;
-background:#111;
-margin-top:30px;
-}
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#fff}
+  #gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #title{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);left:0;right:0;text-align:center;letter-spacing:.6em;font-weight:800;font-size:18px;opacity:.9;pointer-events:none}
+  #cam{position:fixed;right:10px;bottom:10px;width:150px;height:112px;border:1px solid rgba(255,255,255,.25);border-radius:8px;background:#000;transform:none}
+  #video{display:none}
+  #status{position:fixed;left:10px;top:calc(env(safe-area-inset-top,0px) + 44px);font-size:12px;line-height:1.6;opacity:.8;font-family:ui-monospace,Menlo,monospace}
+  #start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(0,0,0,.88);z-index:5;text-align:center;padding:24px}
+  #start button{font-size:18px;padding:14px 34px;border-radius:30px;border:1px solid #ff4d4d;background:transparent;color:#fff;letter-spacing:.2em}
+  #start p{max-width:340px;opacity:.7;font-size:13px;line-height:1.6;margin:0}
+  #gl{transition:opacity 1s} body.asleep #gl{opacity:.1} body.asleep #cam{opacity:.25}
+  #sleepmsg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;font-size:20px;letter-spacing:.25em;opacity:.8;pointer-events:none;padding:30px}
+  body.asleep #sleepmsg{display:flex}
+  #mic{position:fixed;right:10px;top:calc(env(safe-area-inset-top,0px) + 10px);font-size:12px;padding:6px 10px;border:1px solid rgba(255,255,255,.3);border-radius:16px;background:rgba(0,0,0,.4);color:#fff}
 </style>
 </head>
-
 <body>
-
-<header>
-🔥 Sharing Awesome FF Shop 🔥
-</header>
-
-<div class="hero">
-<h1>Welcome Gamers!</h1>
-<p>Buy Free Fire IDs & Redeem Codes Easily</p>
+<canvas id="gl"></canvas>
+<div id="title">VISION</div>
+<div id="sleepmsg">SAY “VISION”<br>TO WAKE UP</div>
+<div id="status">starting…</div>
+<button id="mic">🎤 voice: off</button>
+<canvas id="cam" width="300" height="224"></canvas>
+<video id="video" playsinline muted></video>
+<div id="start">
+  <div style="font-size:28px;letter-spacing:.5em;font-weight:800">VISION</div>
+  <p>Allow camera and microphone. Use Chrome. Good light helps hand tracking.</p>
+  <button id="go">START</button>
 </div>
 
-<div class="card">
-<h2>💎 Free Fire IDs</h2>
-<p>High Rank • Rare Bundles • Safe Deals</p>
-</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+<script>
+(function(){
+const N = 6000;
+const $ = id => document.getElementById(id);
+const statusEl = $('status');
 
-<div class="card">
-<h2>🎁 Redeem Codes</h2>
-<p>Fast Delivery After Confirmation</p>
-</div>
+// ---------- three.js scene ----------
+const renderer = new THREE.WebGLRenderer({canvas:$('gl'), antialias:true, alpha:false});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+const camera3 = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+camera3.position.z = 6;
+const group = new THREE.Group();
+scene.add(group);
 
-<div class="card">
-<h2>📱 Contact on Telegram</h2>
+function resize(){
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera3.aspect = w / h;
+  camera3.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
 
-<a class="btn" href="https://t.me/YOUR_USERNAME">
-Contact Now
-</a>
+function glowTexture(){
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32,32,0,32,32,32);
+  gr.addColorStop(0,'rgba(255,255,255,1)');
+  gr.addColorStop(.35,'rgba(255,255,255,.55)');
+  gr.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c);
+}
 
-</div>
+const geo = new THREE.BufferGeometry();
+const cur = new Float32Array(N*3);
+geo.setAttribute('position', new THREE.BufferAttribute(cur, 3));
+const colArr = new Float32Array(N*3).fill(1);
+geo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+const mat = new THREE.PointsMaterial({
+  size: 0.055, vertexColors: true, map: glowTexture(), transparent: true, depthWrite: false,
+  blending: THREE.AdditiveBlending, color: new THREE.Color('#ff2a2a'), sizeAttenuation: true
+});
+group.add(new THREE.Points(geo, mat));
 
-<footer>
-© 2026 Sharing Awesome
-</footer>
+// ---------- shapes ----------
+const rnd = (a=1) => Math.random()*a;
+const gauss = () => (Math.random()+Math.random()+Math.random()+Math.random()-2)/2;
 
+function shapeSphere(){
+  const a = new Float32Array(N*3); let k = 0;
+  const put = (x,y,z)=>{ a[k++]=x; a[k++]=y; a[k++]=z; };
+  for(let i=0;i<1000;i++) put(gauss()*.5, gauss()*.5, gauss()*.5);           // core
+  for(let i=0;i<2000;i++){                                                    // shell
+    const y = 1 - (i/1999)*2, r = Math.sqrt(1-y*y), th = i*2.399963;
+    const R = 1.15 + gauss()*.04;
+    put(Math.cos(th)*r*R, y*R, Math.sin(th)*r*R);
+  }
+  const tilts = [[0,0],[1.0,0.4],[-0.9,1.2]];                                 // orbit rings
+  for(const [tx,tz] of tilts){
+    for(let i=0;i<1000;i++){
+      const th = rnd(Math.PI*2), R = 1.8 + gauss()*.05;
+      let x = Math.cos(th)*R, y = gauss()*.03, z = Math.sin(th)*R;
+      let y2 = y*Math.cos(tx) - z*Math.sin(tx), z2 = y*Math.sin(tx) + z*Math.cos(tx);
+      let x2 = x*Math.cos(tz) - y2*Math.sin(tz), y3 = x*Math.sin(tz) + y2*Math.cos(tz);
+      put(x2, y3, z2);
+    }
+  }
+  return a;
+}
+
+function shapeHuman(){
+  const pts = [];
+  const cap = (ax,ay,az,bx,by,bz,r,n)=>{
+    for(let i=0;i<n;i++){
+      const t = Math.random();
+      let dx = gauss(), dy = gauss(), dz = gauss();
+      const l = Math.hypot(dx,dy,dz) || 1;
+      const rr = r * (Math.random() < .7 ? 1 : Math.random());
+      pts.push([ax+(bx-ax)*t + dx/l*rr, ay+(by-ay)*t + dy/l*rr, az+(bz-az)*t + dz/l*rr*.6]);
+    }
+  };
+  cap(0,1.75,0, 0,1.75,0, .24, 500);          // head
+  cap(0,1.45,0, 0,1.55,0, .09, 120);          // neck
+  cap(0,1.35,0, 0,.55,0, .32, 1200);          // torso
+  cap(-.5,1.35,0, .5,1.35,0, .12, 300);       // shoulders
+  for(const s of [-1,1]){
+    cap(.5*s,1.35,0, .78*s,.7,0, .1, 350);    // upper arm
+    cap(.78*s,.7,0, .88*s,.05,0, .085, 350);  // forearm
+    cap(.2*s,.5,0, .25*s,-.5,0, .15, 600);    // thigh
+    cap(.25*s,-.5,0, .25*s,-1.5,0, .11, 500); // shin
+  }
+  cap(-.2,.5,0, .2,.5,0, .2, 300);            // pelvis
+  const a = new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    const p = pts[i % pts.length];
+    a[i*3] = p[0]*1.05; a[i*3+1] = (p[1]-.1)*1.05; a[i*3+2] = p[2];
+  }
+  return a;
+}
+
+function shapeGalaxy(){
+  const a = new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    const arm = i % 3, r = Math.pow(Math.random(), .6) * 2.8;
+    const ang = r*1.6 + arm*Math.PI*2/3 + gauss()*.35;
+    a[i*3]   = Math.cos(ang)*r + gauss()*.12;
+    a[i*3+1] = gauss()*.18*(1+ (1-r/2.8));
+    a[i*3+2] = Math.sin(ang)*r + gauss()*.12;
+  }
+  return a;
+}
+
+// ---- Iron-Man style suit made of removable parts ----
+const PARTS = [
+  {name:'helmet',    off:[0,1.3,1.4],   sym:false, col:[1,.12,.1],  alias:/helmet|head|mask|face/,        ctr:[[0,1.7,0]]},
+  {name:'chest',     off:[0,.2,1.9],    sym:false, col:[1,.12,.1],  alias:/chest|armou?r|reactor|torso/,  ctr:[[0,1.1,0]]},
+  {name:'shoulders', off:[1.4,.8,.4],   sym:true,  col:[1,.78,.25], alias:/shoulder/,                    ctr:[[-.52,1.35,0],[.52,1.35,0]]},
+  {name:'arms',      off:[1.9,0,.6],    sym:true,  col:[1,.12,.1],  alias:/\barms?\b|forearm/,           ctr:[[-.7,.9,0],[.7,.9,0]]},
+  {name:'gloves',    off:[2.4,-.6,1],   sym:true,  col:[1,.78,.25], alias:/glove|hand|gauntlet|palm/,    ctr:[[-.9,0,0],[.9,0,0]]},
+  {name:'waist',     off:[0,-.3,1.7],   sym:false, col:[1,.78,.25], alias:/waist|belt|pelvis/,           ctr:[[0,.5,0]]},
+  {name:'legs',      off:[1.5,-.4,.8],  sym:true,  col:[1,.12,.1],  alias:/\blegs?\b|thigh|shin/,        ctr:[[-.22,-.4,0],[.22,-.4,0]]},
+  {name:'boots',     off:[1.4,-1.5,1.2],sym:true,  col:[1,.78,.25], alias:/boot|foot|feet|shoe/,         ctr:[[-.25,-1.45,0],[.25,-1.45,0]]},
+].map(p => Object.assign(p, {on:true, a:0, ox:0, oy:0, oz:0}));
+let suitMode = false, pinchGrab = false;
+
+function shapeSuit(){
+  const a = new Float32Array(N*3), pid = new Uint8Array(N), side = new Float32Array(N), cols = new Float32Array(N*3);
+  let k = 0;
+  const cap = (p,ax,ay,az,bx,by,bz,r,n,col)=>{
+    for(let i=0;i<n;i++){
+      const t = Math.random();
+      const dx = gauss(), dy = gauss(), dz = gauss(), l = Math.hypot(dx,dy,dz) || 1;
+      const rr = r * (Math.random() < .75 ? 1 : Math.random());
+      const x = ax+(bx-ax)*t + dx/l*rr, y = ay+(by-ay)*t + dy/l*rr, z = az+(bz-az)*t + dz/l*rr*.6;
+      a[k*3] = x*1.05; a[k*3+1] = (y-.1)*1.05; a[k*3+2] = z*1.05;
+      pid[k] = p; side[k] = x < 0 ? -1 : 1;
+      const c = col || PARTS[p].col;
+      cols[k*3] = c[0]; cols[k*3+1] = c[1]; cols[k*3+2] = c[2];
+      k++;
+    }
+  };
+  const gold = [1,.78,.25], arc = [.35,.95,1];
+  cap(0, 0,1.75,0, 0,1.75,0, .26, 560);                 // helmet
+  cap(0, 0,1.7,.2, 0,1.62,.22, .12, 140, gold);         // faceplate
+  cap(1, 0,1.4,0, 0,.8,0, .36, 800);                    // chest
+  cap(1, 0,.8,0, 0,.55,0, .3, 350);                     // abdomen
+  cap(1, 0,1.15,.33, 0,1.15,.33, .09, 150, arc);        // arc reactor
+  cap(1, 0,1.5,0, 0,1.55,0, .1, 150);                   // neck
+  for(const s of [-1,1]){
+    cap(2, .5*s,1.35,0, .55*s,1.35,0, .17, 150);        // shoulder
+    cap(3, .5*s,1.35,0, .78*s,.7,0, .1, 250);           // upper arm
+    cap(3, .78*s,.7,0, .88*s,.15,0, .09, 250);          // forearm
+    cap(4, .88*s,.1,0, .9*s,-.05,0, .12, 200);          // glove
+    cap(6, .2*s,.5,0, .25*s,-.5,0, .15, 350);           // thigh
+    cap(6, .25*s,-.5,0, .25*s,-1.3,0, .115, 350);       // shin
+    cap(7, .25*s,-1.4,.05, .25*s,-1.5,.2, .14, 225);    // boot
+  }
+  cap(5, -.2,.5,0, .2,.5,0, .2, 300);                   // waist
+  return {a, pid, side, cols};
+}
+
+const SUIT = shapeSuit();
+const SHAPES = { sphere: shapeSphere(), human: shapeHuman(), galaxy: shapeGalaxy(), suit: SUIT.a };
+let target = SHAPES.sphere;
+cur.set(SHAPES.galaxy);
+const seed = new Float32Array(N).map(()=>Math.random());
+
+// ---------- state ----------
+const S = { scale:1, scaleT:1, ex:0, exT:0, spin:.25, rz:0, rzT:0, color:new THREE.Color('#ff2a2a') };
+const COLORS = { red:'#ff2a2a', blue:'#2a8cff', cyan:'#22e6ff', purple:'#b44dff', pink:'#ff6bd6', gold:'#ffc23a', yellow:'#ffe84a', orange:'#ff8a2a', green:'#38ff7a', white:'#ffffff' };
+
+let colorName = 'red';
+function setShape(n){
+  target = SHAPES[n]; suitMode = (n === 'suit');
+  if(suitMode){ colArr.set(SUIT.cols); S.color.set('#ffffff'); }
+  else { colArr.fill(1); S.color.set(COLORS[colorName]); }
+  geo.attributes.color.needsUpdate = true;
+  say(n === 'suit' ? 'suit' : n);
+}
+function setColor(n){
+  colorName = n; S.color.set(COLORS[n]);
+  if(suitMode){ colArr.fill(1); geo.attributes.color.needsUpdate = true; }   // tint whole suit
+  say(n);
+}
+
+function togglePart(i){ PARTS[i].on = !PARTS[i].on; lastCmd = PARTS[i].name + (PARTS[i].on ? ' on' : ' off'); }
+
+function suitCmd(t){
+  const rem = /remove|take off|detach|eject|strip|disassemble|undress/.test(t);
+  const add = /\badd\b|attach|wear|put on|equip|install|assemble|suit up|connect|build|fit/.test(t);
+  if(rem === add) return false;
+  const all = /\b(all|everything)\b|suit|disassemble|assemble|undress/.test(t);
+  const idx = PARTS.findIndex(p => p.alias.test(t));
+  if(!all && idx < 0 && !suitMode) return false;
+  if(!suitMode) setShape('suit');
+  const on = add;
+  if(all){ PARTS.forEach(p => p.on = on); say(on ? 'suit up' : 'suit off'); return true; }
+  if(idx >= 0){ PARTS[idx].on = on; say(PARTS[idx].name + (on ? ' on' : ' off')); return true; }
+  const list = PARTS.filter(p => p.on !== on);
+  if(list.length){ list[0].on = on; say(list[0].name + (on ? ' on' : ' off')); }
+  return true;
+}
+
+// which suit part is under the pinch point (screen coords 0..1)
+function pickPart(pos){
+  group.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  let best = -1, bd = 1e9;
+  PARTS.forEach((p,i) => {
+    for(const c of p.ctr){
+      const sg = p.sym ? (c[0] < 0 ? -1 : 1) : 1;
+      v.set(c[0]*1.05 + p.ox*sg, (c[1]-.1)*1.05 + p.oy, c[2]*1.05 + p.oz).applyMatrix4(group.matrixWorld).project(camera3);
+      const sx = (v.x*.5+.5)*innerWidth, sy = (-v.y*.5+.5)*innerHeight;
+      const d = Math.hypot(sx - pos.x*innerWidth, sy - pos.y*innerHeight);
+      if(d < bd){ bd = d; best = i; }
+    }
+  });
+  return bd < innerHeight*.14 ? best : -1;
+}
+
+// ---------- speech output / voice input ----------
+function say(msg){ lastCmd = msg; try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(msg); u.rate = 1.1; u.volume = .6; speechSynthesis.speak(u);}catch(e){} }
+let lastCmd = '—', heard = '—';
+
+const COMMANDS = [
+  [/suit|iron ?man|jarvis|armou?r/, ()=>setShape('suit')],
+  [/sphere|atom|planet|core|globe|ball/, ()=>setShape('sphere')],
+  [/human|robot|body|person/, ()=>setShape('human')],
+  [/galaxy|cloud|dust|spiral|stars?/, ()=>setShape('galaxy')],
+  [/\bred\b/, ()=>setColor('red')],
+  [/blue/, ()=>setColor('blue')],
+  [/cyan|aqua/, ()=>setColor('cyan')],
+  [/purple|violet/, ()=>setColor('purple')],
+  [/pink/, ()=>setColor('pink')],
+  [/gold|golden|yellow/, ()=>setColor('gold')],
+  [/orange/, ()=>setColor('orange')],
+  [/green/, ()=>setColor('green')],
+  [/white/, ()=>setColor('white')],
+  [/faster|speed up|fast/, ()=>{ S.spin = Math.min(S.spin*1.8+.1, 4); say('faster'); }],
+  [/slower|slow down|slow/, ()=>{ S.spin = Math.max(S.spin/1.8, .02); say('slower'); }],
+  [/stop|freeze|pause/, ()=>{ S.spin = 0; say('stopped'); }],
+  [/start|spin|rotate|resume/, ()=>{ if(S.spin<.05) S.spin = .3; say('rotating'); }],
+  [/bigger|larger|zoom in|expand|grow/, ()=>{ S.scaleT = Math.min(S.scaleT*1.4, 3.5); say('bigger'); }],
+  [/smaller|shrink|zoom out|reduce/, ()=>{ S.scaleT = Math.max(S.scaleT/1.4, .3); say('smaller'); }],
+  [/explode|burst|spread/, ()=>{ S.exT = 1.4; setTimeout(()=>S.exT = 0, 1200); say('explode'); }],
+  [/reset|normal|default/, ()=>{ PARTS.forEach(p=>p.on=true); S.scaleT = 1; S.spin = .25; S.exT = 0; group.rotation.set(0,0,0); S.rzT = 0; setShape('sphere'); setColor('red'); }],
+];
+
+let awake = false, idleTimer = null;
+const IDLE_MS = 60000;
+function resetIdle(){ clearTimeout(idleTimer); if(awake) idleTimer = setTimeout(goSleep, IDLE_MS); }
+function wake(){
+  if(awake) return;
+  awake = true; document.body.classList.remove('asleep');
+  say("Yes, I'm here"); resetIdle();
+}
+function goSleep(){
+  if(awake && window.AndroidBridge) setTimeout(()=>AndroidBridge.onSleep(), 900);
+  awake = false; clearTimeout(idleTimer); S.exT = 0; prevPinch = null;
+  document.body.classList.add('asleep'); lastCmd = 'sleeping';
+}
+const WAKE_RE = /vision|visions|wake up|hey v|vishan|vijan/;
+
+function handleSpeech(text){
+  heard = text;
+  const t = text.toLowerCase();
+  if(!awake){ if(WAKE_RE.test(t)) wake(); return; }
+  resetIdle();
+  if(/\b(go to sleep|sleep|goodbye|bye|good night)\b/.test(t)){ say('Sleeping'); setTimeout(goSleep, 700); return; }
+  if(suitCmd(t)) return;
+  for(const [re, fn] of COMMANDS){ if(re.test(t)){ fn(); return; } }
+}
+
+let rec = null, voiceOn = false;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function startVoice(){
+  if(!SR){ $('mic').textContent = '🎤 not supported'; return; }
+  rec = new SR(); rec.continuous = true; rec.interimResults = true; rec.lang = 'en-IN';
+  rec.onresult = e => {
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const tx = e.results[i][0].transcript;
+      if(!awake && WAKE_RE.test(tx.toLowerCase())){ heard = tx; wake(); continue; }
+      if(e.results[i].isFinal) handleSpeech(tx);
+    }
+  };
+  rec.onend = () => { if(voiceOn){ try{ rec.start(); }catch(e){} } };
+  rec.onerror = () => {};
+  voiceOn = true; try{ rec.start(); }catch(e){}
+  $('mic').textContent = '🎤 voice: on';
+}
+function stopVoice(){ voiceOn = false; try{ rec.stop(); }catch(e){} $('mic').textContent = '🎤 voice: off'; }
+$('mic').onclick = () => voiceOn ? stopVoice() : startVoice();
+
+// ---------- hand tracking ----------
+const camCanvas = $('cam'), cctx = camCanvas.getContext('2d');
+const video = $('video');
+let handInfo = 'no hands', prevPinch = null, lastResults = null;
+
+const d2 = (a,b)=>Math.hypot((a.x-b.x)*4/3, a.y-b.y);   // aspect-corrected distance (4:3 camera)
+function analyse(lm){
+  const size = d2(lm[0], lm[9]) || .1;
+  const pinch = d2(lm[4], lm[8]) / size < .35;
+  let ext = 0;
+  for(const [t,p] of [[8,6],[12,10],[16,14],[20,18]]) if(d2(lm[t], lm[0]) > d2(lm[p], lm[0])) ext++;
+  return { pinch, open: ext >= 4 && !pinch, fist: ext === 0 && !pinch,
+           pos: { x: 1 - (lm[4].x+lm[8].x)/2, y: (lm[4].y+lm[8].y)/2 },
+           wrist: { x: 1 - lm[0].x, y: lm[0].y } };
+}
+
+function onResults(res){
+  lastResults = res;
+  const hs = res.multiHandLandmarks || [];
+  if(!awake){ handInfo = 'sleeping'; drawCam(res); return; }
+  if(hs.length) resetIdle();
+  const info = hs.map(analyse);
+  if(hs.length === 2){
+    const [a,b] = info[0].wrist.x < info[1].wrist.x ? [info[0], info[1]] : [info[1], info[0]];
+    const dx = (b.wrist.x - a.wrist.x) * 4/3, dy = b.wrist.y - a.wrist.y;
+    S.scaleT = Math.max(.3, Math.min(3.5, Math.hypot(dx,dy) * 3.4));
+    S.rzT = -Math.atan2(dy, dx);
+    S.exT = 0; prevPinch = null;
+    handInfo = 'two hands · size';
+  } else if(hs.length === 1){
+    const h = info[0];
+    if(h.pinch){
+      if(!prevPinch){
+        pinchGrab = false;
+        if(suitMode){ const i = pickPart(h.pos); if(i >= 0){ togglePart(i); pinchGrab = true; } }
+      } else if(!pinchGrab){
+        group.rotation.y += (h.pos.x - prevPinch.x) * 6;
+        group.rotation.x += (h.pos.y - prevPinch.y) * 6;
+      }
+      prevPinch = h.pos; S.exT = 0; handInfo = pinchGrab ? 'pinch · part' : 'pinch · rotate';
+    } else {
+      prevPinch = null;
+      if(h.open){ S.exT = .9; handInfo = 'open · spread'; }
+      else if(h.fist){ S.exT = -.55; handInfo = 'fist · condense'; }
+      else { S.exT = 0; handInfo = 'hand'; }
+    }
+  } else {
+    if(handInfo !== 'no hands') S.exT = 0;
+    prevPinch = null; handInfo = 'no hands';
+  }
+  drawCam(res);
+}
+
+function drawCam(res){
+  const w = camCanvas.width, h = camCanvas.height;
+  cctx.save(); cctx.translate(w,0); cctx.scale(-1,1);
+  if(res.image) cctx.drawImage(res.image, 0, 0, w, h);
+  cctx.restore();
+  cctx.fillStyle = 'rgba(0,0,0,.35)'; cctx.fillRect(0,0,w,h);
+  for(const lm of (res.multiHandLandmarks||[])){
+    for(const p of lm){ cctx.beginPath(); cctx.arc((1-p.x)*w, p.y*h, 3, 0, 7); cctx.fillStyle = '#7dffb0'; cctx.fill(); }
+  }
+}
+
+async function startCamera(){
+  try{
+    const hands = new Hands({ locateFile: f => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/' + f });
+    hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: .6, minTrackingConfidence: .55 });
+    hands.onResults(onResults);
+    const cam = new Camera(video, { onFrame: async () => { await hands.send({ image: video }); }, width: 640, height: 480, facingMode: 'user' });
+    await cam.start();
+  }catch(err){
+    handInfo = 'camera unavailable (' + (err && err.name || 'error') + ') — mouse mode';
+  }
+}
+
+// ---------- mouse / touch fallback ----------
+let drag = null;
+const cv = $('gl');
+cv.addEventListener('pointerdown', e => drag = {x:e.clientX, y:e.clientY});
+addEventListener('pointerup', () => drag = null);
+addEventListener('pointermove', e => { if(!drag) return; group.rotation.y += (e.clientX-drag.x)*.008; group.rotation.x += (e.clientY-drag.y)*.008; drag = {x:e.clientX, y:e.clientY}; });
+addEventListener('wheel', e => { S.scaleT = Math.max(.3, Math.min(3.5, S.scaleT * (e.deltaY>0 ? .93 : 1.07))); });
+
+// ---------- main loop ----------
+let last = performance.now();
+function tick(now){
+  requestAnimationFrame(tick);
+  const dt = Math.min((now-last)/1000, .05); last = now;
+  S.scale += (S.scaleT - S.scale) * .12;
+  S.ex    += (S.exT - S.ex) * .1;
+  S.rz    += (S.rzT - S.rz) * .12;
+  group.scale.setScalar(S.scale);
+  group.rotation.y += S.spin * dt;
+  group.rotation.z = S.rz;
+  mat.color.lerp(S.color, .06);
+
+  const t = now/1000;
+  const ex = S.ex;
+  PARTS.forEach((p,i) => {
+    p.a += ((p.on ? 0 : 1) - p.a) * .08;
+    p.ox = p.off[0]*p.a; p.oy = p.off[1]*p.a + Math.sin(t*1.8 + i)*.07*p.a; p.oz = p.off[2]*p.a;
+  });
+  for(let i=0;i<N;i++){
+    const k = i*3, s = seed[i];
+    const f = 1 + ex * (.4 + s*1.6);
+    const wob = Math.sin(t*1.5 + s*40) * .012;
+    let ox = 0, oy = 0, oz = 0;
+    if(suitMode){ const q = PARTS[SUIT.pid[i]]; const sg = q.sym ? SUIT.side[i] : 1; ox = q.ox*sg; oy = q.oy; oz = q.oz; }
+    cur[k]   += (target[k]  *f + wob + ox - cur[k])   * .07;
+    cur[k+1] += (target[k+1]*f + wob + oy - cur[k+1]) * .07;
+    cur[k+2] += (target[k+2]*f + wob + oz - cur[k+2]) * .07;
+  }
+  geo.attributes.position.needsUpdate = true;
+  renderer.render(scene, camera3);
+  statusEl.innerHTML = 'hands: ' + handInfo + '<br>heard: ' + heard + '<br>last: ' + lastCmd;
+}
+requestAnimationFrame(tick);
+
+$('go').onclick = async () => {
+  $('start').style.display = 'none';
+  if(window.AndroidBridge) $('mic').style.display = 'none'; else startVoice();
+  startCamera();
+  try{ if(navigator.wakeLock) navigator.wakeLock.request('screen'); }catch(e){}
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{ navigator.wakeLock && navigator.wakeLock.request('screen'); }catch(e){} } });
+  if(window.AndroidBridge) wake(); else goSleep();
+};
+window.visionStart = () => $('go').onclick();
+window.visionHear = t => handleSpeech(t);
+})();
+</script>
 </body>
 </html>
